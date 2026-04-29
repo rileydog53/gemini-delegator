@@ -212,30 +212,41 @@ Return the response as valid JSON with keys: code (string - full Python code), e
         return self._parse_and_format_response(response_text, "code", request)
 
     def _parse_and_format_response(self, response_text, task_type, query_summary):
-        """Parse JSON response and format as text or file."""
+        """Parse JSON response, always save to outputs/ and Desktop, return text in chat."""
         try:
             data = json.loads(response_text)
         except json.JSONDecodeError:
             logger.error(f"Failed to parse JSON response: {response_text[:100]}")
-            return response_text  # Return raw if not valid JSON
+            return response_text
 
-        threshold = self.config["output_size_threshold_bytes"]
-        response_size = len(response_text)
+        formatted = json.dumps(data, indent=2)
 
-        if response_size > threshold:
-            # Save to file
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{task_type}_{timestamp}.json"
-            filepath = self.output_dir / filename
+        # Always save to outputs/
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{task_type}_{timestamp}.json"
+        outputs_path = self.output_dir / filename
+        with open(outputs_path, "w") as f:
+            json.dump(data, f, indent=2)
 
-            with open(filepath, "w") as f:
-                json.dump(data, f, indent=2)
+        # Always save a copy to Desktop
+        desktop_path = Path.home() / "Desktop" / filename
+        with open(desktop_path, "w") as f:
+            json.dump(data, f, indent=2)
 
-            logger.info(f"Output saved to {filepath}")
-            return f"[File saved: {filename}]\n\n{json.dumps(data, indent=2)[:500]}..."
+        logger.info(f"Output saved to {outputs_path} and {desktop_path}")
+
+        CHAT_LIMIT = 2000
+        if len(formatted) <= CHAT_LIMIT:
+            chat_body = formatted
         else:
-            # Return as text
-            return json.dumps(data, indent=2)
+            chat_body = formatted[:CHAT_LIMIT] + "\n... [truncated]"
+
+        return (
+            f"{chat_body}\n\n"
+            f"💾 Saved to:\n"
+            f"  • outputs/{filename}\n"
+            f"  • Desktop/{filename}"
+        )
 
 
 def main():
