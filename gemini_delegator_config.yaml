@@ -1,0 +1,29 @@
+gemini:
+  model: "gemini-2.5-pro"
+  api_version: "v1beta"
+  api_key_file: "config/gemini_api_key.json"
+
+reasoning_budgets:
+  research:
+    basic: 1000
+    intermediate: 10000
+    advanced: 30000
+    expert: 50000
+
+  code:
+    basic: 2000
+    intermediate: 8000
+    advanced: 25000
+    expert: 50000
+
+output_formats:
+  research: markdown
+  code: python
+
+output_size_threshold_bytes: 5120  # >5KB goes to file
+
+paths:
+  outputs: "outputs/"
+  logs: "logs/"
+
+log_file: "logs/delegator.log"
