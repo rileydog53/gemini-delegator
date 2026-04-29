@@ -29,6 +29,12 @@ python3 gemini_delegator.py --type research --query "Your query" --level advance
 python3 gemini_delegator.py --type code --request "Build X" --level intermediate
 ```
 
+**Image:**
+```bash
+python3 gemini_delegator.py --type image --prompt "A cat astronaut on Mars" \
+  --style cinematic --aspect wide --lighting "golden hour" --num 2
+```
+
 **Levels:** `basic` | `intermediate` | `advanced` | `expert`
 
 **Models:** `gemini25pro` (default) | `gemini25flash` | `pro` | `flash` — see `gemini_delegator.py` for full registry.
