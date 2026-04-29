@@ -5,7 +5,6 @@ __pycache__/
 .venv
 venv/
 *.log
-logs/
 node_modules/
 .idea/
 .vscode/
@@ -17,6 +16,13 @@ node_modules/
 dist/
 build/
 *.egg-info/
-gemini_api_key.json
-*_key.json
+
+# Secrets — never commit
+config/gemini_api_key.json
 *_secret.json
+
+# Runtime output (keep dirs via .gitkeep, ignore contents)
+logs/*
+!logs/.gitkeep
+outputs/*
+!outputs/.gitkeep
