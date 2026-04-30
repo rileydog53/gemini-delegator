@@ -1,6 +1,6 @@
 # Gemini Delegator
 
-AI-to-AI delegation for research and coding tasks. Routes requests from Claude to Gemini API with reasoning control.
+AI-to-AI delegation for research, coding, and image generation. Routes requests to the Gemini API with reasoning control and a full desktop GUI.
 
 ## Setup
 
@@ -14,10 +14,18 @@ AI-to-AI delegation for research and coding tasks. Routes requests from Claude t
 
 3. **Install dependencies**:
    ```bash
-   pip install google-genai pyyaml
+   pip install google-genai pyyaml PyQt6
    ```
 
 ## Usage
+
+### GUI (desktop app)
+```bash
+python3 gemini_gui.py
+```
+Opens a three-tab window: Research, Code, and Image. All 49 models and 40+ image styles are available from dropdowns.
+
+### CLI
 
 **Research:**
 ```bash
@@ -37,14 +45,23 @@ python3 gemini_delegator.py --type image --prompt "A cat astronaut on Mars" \
 
 **Levels:** `basic` | `intermediate` | `advanced` | `expert`
 
-**Models:** `gemini25pro` (default) | `gemini25flash` | `pro` | `flash` — see `gemini_delegator.py` for full registry.
+**Models:** 49 available — see `MODEL_REGISTRY` in `gemini_delegator.py` for the full list.
+Default for research/code: `gemini25pro`. Default for images: `imagen4`.
+
+### Output behavior
+All responses are saved automatically:
+- `outputs/` — inside this project folder
+- `~/Desktop/` — a copy lands on your Desktop every time
+
+Text responses are capped at 2000 characters in the terminal/GUI; the full file is always saved.
 
 ## Files
 
-- `gemini_delegator.py` — main script
-- `gemini_delegator_config.yaml` — model, reasoning budgets, paths
-- `gemini_delegator_spec.md` — full design doc
-- `gemini-delegate.skill` — Claude Code skill bundle
+- `gemini_delegator.py` — core backend: API calls, model registry, image generation
+- `gemini_gui.py` — PyQt6 desktop GUI
+- `gemini_delegator_config.yaml` — reasoning budgets and paths
+- `gemini_delegator_spec.md` — architecture reference
+- `gemini-delegate.skill` — Claude Code skill bundle (lets Claude call this via `/gemini-delegate`)
 - `config/` — API key (gitignored)
-- `outputs/` — generated files (>5KB responses)
+- `outputs/` — saved responses and images
 - `logs/` — execution log

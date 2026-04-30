@@ -267,8 +267,8 @@ Return the response as valid JSON with keys: code (string - full Python code), e
 
     def _call_gemini_with_retry(self, prompt, model, thinking_budget, max_retries=3):
         """Call Gemini API with rate limiting and error handling."""
-        # Thinking tokens only supported on gemini-2.5-pro
-        THINKING_CAPABLE = {"gemini-2.5-pro"}
+        # Models confirmed to support thinking/reasoning tokens
+        THINKING_CAPABLE = {"gemini-2.5-pro", "gemini-2.5-flash"}
         supports_thinking = model in THINKING_CAPABLE
 
         call_config = GenerateContentConfig(

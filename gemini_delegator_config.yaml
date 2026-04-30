@@ -1,9 +1,12 @@
 gemini:
-  model: "gemini-2.5-pro"
-  api_version: "v1beta"
+  # NOTE: api_key_file is the only gemini setting actively used by the code.
+  # The model is selected per-request via --model (see MODEL_REGISTRY in gemini_delegator.py).
   api_key_file: "config/gemini_api_key.json"
 
 reasoning_budgets:
+  # Thinking-token budgets passed to the API for research and code tasks.
+  # Higher = deeper reasoning, slower response.
+  # Only applies to thinking-capable models (gemini-2.5-pro, gemini-2.5-flash).
   research:
     basic: 1000
     intermediate: 10000
@@ -20,7 +23,7 @@ output_formats:
   research: markdown
   code: python
 
-output_size_threshold_bytes: 5120  # >5KB goes to file
+output_size_threshold_bytes: 5120  # kept for reference; all responses now save to outputs/ + Desktop regardless
 
 paths:
   outputs: "outputs/"
