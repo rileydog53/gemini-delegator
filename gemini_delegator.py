@@ -40,69 +40,69 @@ logger = logging.getLogger(__name__)
 # "aqa"       → generate_answer   (grounded Q&A with citations)
 MODEL_REGISTRY = {
     # ── Gemini 2.5 ────────────────────────────────────────────────────────────
-    "gemini25pro":        {"id": "gemini-2.5-pro",                              "type": "text"},  # default — deep reasoning + thinking
-    "gemini25flash":      {"id": "gemini-2.5-flash",                            "type": "text"},  # fast, large context, research summaries
-    "pro":                {"id": "gemini-2.5-pro",                              "type": "text"},  # short alias
-    "flash":              {"id": "gemini-2.5-flash",                            "type": "text"},  # short alias
-    "gemini25flashimage": {"id": "gemini-2.5-flash-image",                      "type": "text"},  # 2.5 Flash with native image generation
-    "gemini25computeruse":{"id": "gemini-2.5-computer-use-preview-10-2025",     "type": "text"},  # GUI/desktop agent — sees and controls screens
+    "gemini25pro":        {"id": "gemini-2.5-pro",                              "type": "text",      "desc": "Best overall. Deep reasoning + thinking tokens. Ideal for hard research, complex code, long documents."},
+    "gemini25flash":      {"id": "gemini-2.5-flash",                            "type": "text",      "desc": "Fast and smart. Best all-rounder — most tasks at a fraction of Pro's latency."},
+    "pro":                {"id": "gemini-2.5-pro",                              "type": "text",      "desc": "Alias for gemini25pro. Best overall reasoning."},
+    "flash":              {"id": "gemini-2.5-flash",                            "type": "text",      "desc": "Alias for gemini25flash. Fast and capable."},
+    "gemini25flashimage": {"id": "gemini-2.5-flash-image",                      "type": "text",      "desc": "2.5 Flash that can generate images inline within a text response."},
+    "gemini25computeruse":{"id": "gemini-2.5-computer-use-preview-10-2025",     "type": "text",      "desc": "Trained to understand screenshots and plan GUI/desktop interactions."},
     # ── Gemini 2.0 ────────────────────────────────────────────────────────────
-    "gemini20flash":      {"id": "gemini-2.0-flash",                            "type": "text"},  # speed-optimized general tasks
-    "gemini20lite":       {"id": "gemini-2.0-flash-lite",                       "type": "text"},  # highest-volume simple tasks
+    "gemini20flash":      {"id": "gemini-2.0-flash",                            "type": "text",      "desc": "Previous-gen speed model. Reliable, fast, and well-tested for general tasks."},
+    "gemini20lite":       {"id": "gemini-2.0-flash-lite",                       "type": "text",      "desc": "Fastest and cheapest Gemini model. Best for high-volume simple tasks."},
     # ── Gemini 3.x ────────────────────────────────────────────────────────────
-    "gemini3pro":         {"id": "gemini-3-pro-preview",                        "type": "text"},  # next-gen deep reasoning
-    "gemini3flash":       {"id": "gemini-3-flash-preview",                      "type": "text"},  # next-gen fast tasks
-    "gemini3proimage":    {"id": "gemini-3-pro-image-preview",                  "type": "text"},  # Gemini 3 Pro + native image gen
+    "gemini3pro":         {"id": "gemini-3-pro-preview",                        "type": "text",      "desc": "Next-gen flagship (preview). Stronger reasoning than 2.5 Pro."},
+    "gemini3flash":       {"id": "gemini-3-flash-preview",                      "type": "text",      "desc": "Next-gen fast model (preview). Better quality than 2.5 Flash."},
+    "gemini3proimage":    {"id": "gemini-3-pro-image-preview",                  "type": "text",      "desc": "Gemini 3 Pro with native image generation baked into text responses."},
     # ── Gemini 3.1 ────────────────────────────────────────────────────────────
-    "gemini31pro":        {"id": "gemini-3.1-pro-preview",                      "type": "text"},  # 3.1 flagship — best reasoning
-    "gemini31lite":       {"id": "gemini-3.1-flash-lite-preview",               "type": "text"},  # 3.1 lightweight — fast and cheap
-    "gemini31flashimage": {"id": "gemini-3.1-flash-image-preview",              "type": "text"},  # 3.1 Flash with native image gen
-    "gemini31live":       {"id": "gemini-3.1-flash-live-preview",               "type": "text"},  # 3.1 real-time streaming / live sessions
-    "gemini31customtools":{"id": "gemini-3.1-pro-preview-customtools",          "type": "text"},  # 3.1 Pro with extended/custom tool use
+    "gemini31pro":        {"id": "gemini-3.1-pro-preview",                      "type": "text",      "desc": "Latest flagship (preview). Best available reasoning across all models."},
+    "gemini31lite":       {"id": "gemini-3.1-flash-lite-preview",               "type": "text",      "desc": "Ultra-fast and cheap 3.1 model. Great for lightweight tasks that need speed."},
+    "gemini31flashimage": {"id": "gemini-3.1-flash-image-preview",              "type": "text",      "desc": "3.1 Flash with native inline image generation capability."},
+    "gemini31live":       {"id": "gemini-3.1-flash-live-preview",               "type": "text",      "desc": "Optimized for real-time streaming and live conversation sessions."},
+    "gemini31customtools":{"id": "gemini-3.1-pro-preview-customtools",          "type": "text",      "desc": "3.1 Pro with extended custom tool-calling support for agentic workflows."},
     # ── Deep Research ─────────────────────────────────────────────────────────
-    "deepresearch":       {"id": "deep-research-preview-04-2026",               "type": "text"},  # autonomous multi-step web research
-    "deepresearchpro":    {"id": "deep-research-pro-preview-12-2025",           "type": "text"},  # deep research — pro-tier thoroughness
-    "deepresearchmax":    {"id": "deep-research-max-preview-04-2026",           "type": "text"},  # deep research — maximum depth
+    "deepresearch":       {"id": "deep-research-preview-04-2026",               "type": "text",      "desc": "Autonomously browses the web and synthesizes multi-step research reports."},
+    "deepresearchpro":    {"id": "deep-research-pro-preview-12-2025",           "type": "text",      "desc": "Deep Research at pro-tier thoroughness. More sources, deeper analysis."},
+    "deepresearchmax":    {"id": "deep-research-max-preview-04-2026",           "type": "text",      "desc": "Maximum-effort web research. Most thorough available, slowest."},
     # ── Stable "latest" aliases ───────────────────────────────────────────────
-    "flashlatest":        {"id": "gemini-flash-latest",                         "type": "text"},  # always points to latest Flash release
-    "flashlitelatest":    {"id": "gemini-flash-lite-latest",                    "type": "text"},  # always points to latest Flash Lite release
-    "prolatest":          {"id": "gemini-pro-latest",                           "type": "text"},  # always points to latest Pro release
+    "flashlatest":        {"id": "gemini-flash-latest",                         "type": "text",      "desc": "Always points to Google's current production Flash release. Never deprecated."},
+    "flashlitelatest":    {"id": "gemini-flash-lite-latest",                    "type": "text",      "desc": "Always points to the current production Flash Lite release."},
+    "prolatest":          {"id": "gemini-pro-latest",                           "type": "text",      "desc": "Always points to the current production Pro release."},
     # ── Gemma 3 (open-weight) ─────────────────────────────────────────────────
-    "gemma31b":           {"id": "gemma-3-1b-it",                               "type": "text"},  # 1B — ultra-light, on-device use cases
-    "gemma34b":           {"id": "gemma-3-4b-it",                               "type": "text"},  # 4B — small but capable general tasks
-    "gemma312b":          {"id": "gemma-3-12b-it",                              "type": "text"},  # 12B — balanced quality/speed
-    "gemma327b":          {"id": "gemma-3-27b-it",                              "type": "text"},  # 27B — best open-weight quality
-    "gemma3ne2b":         {"id": "gemma-3n-e2b-it",                             "type": "text"},  # 3n 2B — multimodal nano (audio/image/text)
-    "gemma3ne4b":         {"id": "gemma-3n-e4b-it",                             "type": "text"},  # 3n 4B — multimodal nano, larger
+    "gemma31b":           {"id": "gemma-3-1b-it",                               "type": "text",      "desc": "1B open-weight. Ultra-light; designed for on-device or offline use."},
+    "gemma34b":           {"id": "gemma-3-4b-it",                               "type": "text",      "desc": "4B open-weight. Small but capable for general everyday tasks."},
+    "gemma312b":          {"id": "gemma-3-12b-it",                              "type": "text",      "desc": "12B open-weight. Good balance of quality and speed."},
+    "gemma327b":          {"id": "gemma-3-27b-it",                              "type": "text",      "desc": "27B open-weight. Best quality in Gemma 3 — near frontier model performance."},
+    "gemma3ne2b":         {"id": "gemma-3n-e2b-it",                             "type": "text",      "desc": "2B multimodal nano model. Handles audio, image, and text in a tiny footprint."},
+    "gemma3ne4b":         {"id": "gemma-3n-e4b-it",                             "type": "text",      "desc": "4B multimodal nano. Same as 3ne2b but larger and more capable."},
     # ── Gemma 4 ───────────────────────────────────────────────────────────────
-    "gemma4":             {"id": "gemma-4-26b-a4b-it",                          "type": "text"},  # 4 MoE — 26B params, 4B active (fast + efficient)
-    "gemma431b":          {"id": "gemma-4-31b-it",                              "type": "text"},  # 4 Dense — 31B full model (highest open quality)
+    "gemma4":             {"id": "gemma-4-26b-a4b-it",                          "type": "text",      "desc": "26B mixture-of-experts; only 4B active at once. Fast, efficient, punches above weight."},
+    "gemma431b":          {"id": "gemma-4-31b-it",                              "type": "text",      "desc": "31B dense open-weight model. Highest quality in the Gemma 4 line."},
     # ── Gemini Robotics ───────────────────────────────────────────────────────
-    "robotics15":         {"id": "gemini-robotics-er-1.5-preview",              "type": "text"},  # embodied reasoning for robots / physical agents
-    "robotics16":         {"id": "gemini-robotics-er-1.6-preview",              "type": "text"},  # embodied reasoning v1.6 — improved spatial understanding
+    "robotics15":         {"id": "gemini-robotics-er-1.5-preview",              "type": "text",      "desc": "Embodied reasoning for robotics and physical agent planning."},
+    "robotics16":         {"id": "gemini-robotics-er-1.6-preview",              "type": "text",      "desc": "Robotics v1.6 — improved 3D spatial and physical understanding."},
     # ── Experimental ──────────────────────────────────────────────────────────
-    "nanobanana":         {"id": "nano-banana-pro-preview",                     "type": "text"},  # Google internal experimental model
+    "nanobanana":         {"id": "nano-banana-pro-preview",                     "type": "text",      "desc": "Google internal experimental model. Behavior not fully documented."},
     # ── Image generation (Imagen) ─────────────────────────────────────────────
-    "imagen4":            {"id": "imagen-4.0-generate-001",                     "type": "image"}, # Imagen 4 — photorealistic, high detail
-    "imagen4fast":        {"id": "imagen-4.0-fast-generate-001",                "type": "image"}, # Imagen 4 Fast — quick generation
-    "imagen4ultra":       {"id": "imagen-4.0-ultra-generate-001",               "type": "image"}, # Imagen 4 Ultra — highest quality
+    "imagen4":            {"id": "imagen-4.0-generate-001",                     "type": "image",     "desc": "Imagen 4 standard. Photorealistic, high detail. Best default choice."},
+    "imagen4fast":        {"id": "imagen-4.0-fast-generate-001",                "type": "image",     "desc": "Imagen 4 Fast. Same quality target as standard, noticeably quicker."},
+    "imagen4ultra":       {"id": "imagen-4.0-ultra-generate-001",               "type": "image",     "desc": "Imagen 4 Ultra. Highest possible image quality. Slower and may cost more."},
     # ── Video generation (Veo) — registered; full --type video impl TBD ───────
-    "veo2":               {"id": "veo-2.0-generate-001",                        "type": "video"}, # Veo 2 — cinematic HD video from text
-    "veo3":               {"id": "veo-3.0-generate-001",                        "type": "video"}, # Veo 3 — video + synchronized native audio
-    "veo3fast":           {"id": "veo-3.0-fast-generate-001",                   "type": "video"}, # Veo 3 Fast — quick clip generation
-    "veo31":              {"id": "veo-3.1-generate-preview",                    "type": "video"}, # Veo 3.1 — latest, highest quality
-    "veo31fast":          {"id": "veo-3.1-fast-generate-preview",               "type": "video"}, # Veo 3.1 Fast
-    "veo31lite":          {"id": "veo-3.1-lite-generate-preview",               "type": "video"}, # Veo 3.1 Lite — lightweight clips
+    "veo2":               {"id": "veo-2.0-generate-001",                        "type": "video",     "desc": "Veo 2. Generates cinematic HD video clips from a text description."},
+    "veo3":               {"id": "veo-3.0-generate-001",                        "type": "video",     "desc": "Veo 3. Video + synchronized native audio (ambient sound, speech, music)."},
+    "veo3fast":           {"id": "veo-3.0-fast-generate-001",                   "type": "video",     "desc": "Veo 3 Fast. Quick video clip generation with audio."},
+    "veo31":              {"id": "veo-3.1-generate-preview",                    "type": "video",     "desc": "Veo 3.1. Latest and highest quality video generation (preview)."},
+    "veo31fast":          {"id": "veo-3.1-fast-generate-preview",               "type": "video",     "desc": "Veo 3.1 Fast. Speed-optimized version of Veo 3.1."},
+    "veo31lite":          {"id": "veo-3.1-lite-generate-preview",               "type": "video",     "desc": "Veo 3.1 Lite. Lightweight, short clips with lower compute cost."},
     # ── TTS / Audio — registered; full --type tts/audio impl TBD ─────────────
-    "tts25flash":         {"id": "gemini-2.5-flash-preview-tts",                "type": "tts"},   # 2.5 Flash TTS — fast text-to-speech
-    "tts25pro":           {"id": "gemini-2.5-pro-preview-tts",                  "type": "tts"},   # 2.5 Pro TTS — highest quality voice
-    "tts31flash":         {"id": "gemini-3.1-flash-tts-preview",                "type": "tts"},   # 3.1 Flash TTS — next-gen voice
-    "audio25flash":       {"id": "gemini-2.5-flash-native-audio-latest",        "type": "audio"}, # native audio I/O — understand + generate speech
+    "tts25flash":         {"id": "gemini-2.5-flash-preview-tts",                "type": "tts",       "desc": "2.5 Flash TTS. Fast, natural-sounding text-to-speech output."},
+    "tts25pro":           {"id": "gemini-2.5-pro-preview-tts",                  "type": "tts",       "desc": "2.5 Pro TTS. Highest quality voice output — best for important audio."},
+    "tts31flash":         {"id": "gemini-3.1-flash-tts-preview",                "type": "tts",       "desc": "3.1 Flash TTS. Next-gen voice generation (preview)."},
+    "audio25flash":       {"id": "gemini-2.5-flash-native-audio-latest",        "type": "audio",     "desc": "Native audio I/O. Can understand spoken input AND generate spoken output."},
     # ── Embeddings ────────────────────────────────────────────────────────────
-    "embedding":          {"id": "gemini-embedding-001",                        "type": "embedding"}, # embedding v1 — semantic vector search
-    "embedding2":         {"id": "gemini-embedding-2",                          "type": "embedding"}, # embedding v2 — improved accuracy
+    "embedding":          {"id": "gemini-embedding-001",                        "type": "embedding", "desc": "Converts text to a semantic vector for similarity search, clustering, or RAG."},
+    "embedding2":         {"id": "gemini-embedding-2",                          "type": "embedding", "desc": "Embedding v2. Improved accuracy over v1 for semantic search tasks."},
     # ── Grounded Q&A ─────────────────────────────────────────────────────────
-    "aqa":                {"id": "aqa",                                         "type": "aqa"},   # cited Q&A against provided documents
+    "aqa":                {"id": "aqa",                                         "type": "aqa",       "desc": "Grounded Q&A. Answers questions with citations tied to documents you provide."},
 }
 
 DEFAULT_MODEL_ALIAS = "gemini25pro"
