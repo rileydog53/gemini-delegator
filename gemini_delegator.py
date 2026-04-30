@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 import google.genai
 from google.genai.errors import APIError, ClientError
-from google.genai.types import ThinkingConfig, GenerateContentConfig, GenerateImagesConfig
+from google.genai.types import ThinkingConfig, GenerateContentConfig
 
 # Setup logging
 log_dir = Path(__file__).parent / "logs"
@@ -109,80 +109,6 @@ MODEL_REGISTRY = {
 }
 
 DEFAULT_MODEL_ALIAS = "gemini25pro"
-
-
-# ─── Image Style Presets ──────────────────────────────────────────────────────
-# Use --style to apply one of these. Multiple styles can be stacked with commas.
-STYLE_PRESETS = {
-    # Photographic
-    "photorealistic":  "photorealistic, ultra-detailed, sharp focus, professional photography, 8k",
-    "cinematic":       "cinematic shot, dramatic composition, film grain, anamorphic lens, depth of field",
-    "vintage-photo":   "vintage photograph, faded colors, film grain, 1970s aesthetic, kodachrome",
-    "polaroid":        "polaroid photo, instant camera, soft focus, slightly washed out, nostalgic",
-    "documentary":     "documentary photography, candid, natural light, photojournalism",
-    "portrait":        "professional portrait, soft lighting, shallow depth of field, sharp eyes",
-    "macro":           "macro photography, extreme close-up, hyperdetailed, shallow depth of field",
-    "aerial":          "aerial photography, drone shot, top-down view, vast landscape",
-
-    # Painting / Illustration
-    "oil-painting":    "oil painting, visible brush strokes, classical art style, rich textures",
-    "watercolor":      "watercolor painting, soft edges, flowing pigments, paper texture",
-    "pencil-sketch":   "pencil sketch, graphite, hatching, monochrome, hand-drawn",
-    "ink-drawing":     "black ink drawing, bold lines, crosshatching, high contrast",
-    "impressionist":   "impressionist painting, visible brush strokes, soft lighting, Monet-inspired",
-    "art-nouveau":     "art nouveau, ornate, flowing organic lines, Mucha-inspired",
-    "ukiyo-e":         "ukiyo-e woodblock print, Japanese traditional art, flat colors, bold outlines",
-
-    # Animation / Stylized
-    "anime":           "anime style, cel shading, vibrant colors, expressive eyes, Japanese animation",
-    "studio-ghibli":   "Studio Ghibli style, hand-painted backgrounds, whimsical, soft palette",
-    "disney":          "Disney animation style, expressive characters, vibrant, family-friendly",
-    "pixar":           "Pixar 3D animation style, expressive, soft lighting, family-friendly",
-    "comic-book":      "comic book style, bold outlines, halftone shading, dynamic pose",
-    "manga":           "black and white manga, screentone shading, dynamic linework",
-    "cartoon":         "cartoon style, bold outlines, flat colors, exaggerated features",
-
-    # Digital / Modern
-    "digital-art":     "digital art, vibrant colors, smooth shading, ArtStation trending",
-    "concept-art":     "concept art, detailed environment, atmospheric, professional illustration",
-    "3d-render":       "3D render, octane, ray tracing, cinema 4D, hyperrealistic materials",
-    "low-poly":        "low poly 3D, flat shading, geometric, minimalist 3D",
-    "pixel-art":       "pixel art, 16-bit style, limited palette, retro game aesthetic",
-    "vaporwave":       "vaporwave aesthetic, neon pink and blue, 80s retro, glitch art",
-    "synthwave":       "synthwave, neon grid, sunset, retro-futuristic, 80s aesthetic",
-    "cyberpunk":       "cyberpunk, neon-lit, dystopian city, holographic, rain-slicked streets",
-    "steampunk":       "steampunk, brass gears, victorian, copper pipes, industrial",
-
-    # Mood / Atmosphere
-    "fantasy-art":     "fantasy art, magical, ethereal lighting, mystical atmosphere",
-    "dark-fantasy":    "dark fantasy, gothic, moody, dramatic shadows, ominous",
-    "film-noir":       "film noir, black and white, dramatic shadows, venetian blind lighting, 1940s",
-    "minimalist":      "minimalist, clean composition, negative space, simple color palette",
-    "surreal":         "surreal, dreamlike, impossible geometry, Dali-inspired",
-    "horror":          "horror aesthetic, eerie, unsettling, dim lighting, macabre",
-    "ethereal":        "ethereal, soft glow, dreamlike, otherworldly, luminous",
-
-    # Pop / Graphic
-    "pop-art":         "pop art, Lichtenstein style, bold colors, ben-day dots",
-    "graffiti":        "graffiti street art, spray paint texture, urban, bold tags",
-    "poster":          "movie poster style, dramatic, typography-friendly composition, bold",
-    "infographic":     "clean infographic style, flat design, clear visual hierarchy",
-}
-
-
-# ─── Aspect Ratios ────────────────────────────────────────────────────────────
-ASPECT_RATIOS = {
-    "square":     "1:1",   # 1024x1024 — Instagram posts, profile pics
-    "portrait":   "3:4",   # 896x1280 — vertical photos, book covers
-    "landscape":  "4:3",   # 1280x896 — classic photo, presentation
-    "wide":       "16:9",  # 1408x768 — desktop wallpaper, video thumb
-    "tall":       "9:16",  # 768x1408 — phone wallpaper, story
-    "1:1":        "1:1",
-    "3:4":        "3:4",
-    "4:3":        "4:3",
-    "16:9":       "16:9",
-    "9:16":       "9:16",
-}
 
 
 def resolve_model(alias_or_id: str) -> dict:
@@ -379,103 +305,7 @@ Return the response as valid JSON with keys: code (string - full Python code), e
         response_text = self._call_gemini_with_retry(prompt, model_name, thinking_budget, skip_system_instruction=skip_sys, skip_json_mime=skip_json)
         return self._parse_and_format_response(response_text, "code", request)
 
-    def _build_image_prompt(self, prompt, style=None, lighting=None, mood=None,
-                            quality=None, extra=None):
-        """Compose final image prompt by stacking modifiers onto the base description."""
-        parts = [prompt.strip()]
-
-        # Stack styles (comma-separated supported)
-        if style:
-            for s in [x.strip() for x in style.split(",") if x.strip()]:
-                if s in STYLE_PRESETS:
-                    parts.append(STYLE_PRESETS[s])
-                else:
-                    parts.append(s)  # custom style string
-
-        if lighting:
-            parts.append(f"{lighting} lighting")
-        if mood:
-            parts.append(f"{mood} mood")
-        if quality:
-            parts.append(quality)
-        if extra:
-            parts.append(extra)
-
-        return ", ".join(parts)
-
-    def delegate_image(self, prompt, model=None, style=None, aspect_ratio="1:1",
-                       num_images=1, lighting=None, mood=None, quality=None,
-                       negative_prompt=None, person_generation="ALLOW_ADULT",
-                       extra=None):
-        """Delegate image generation to Imagen via Gemini API."""
-        entry = resolve_model(model or "imagen4")
-        self._check_tier(entry)
-        model_name = entry["id"]
-
-        if entry["type"] != "image":
-            raise ValueError(f"Model '{model}' is not an image model. Use imagen4, imagen4fast, or imagen4ultra.")
-
-        # Resolve aspect ratio alias
-        ratio = ASPECT_RATIOS.get(aspect_ratio, aspect_ratio)
-
-        final_prompt = self._build_image_prompt(
-            prompt, style=style, lighting=lighting, mood=mood,
-            quality=quality, extra=extra
-        )
-
-        logger.info(f"Image task: {prompt[:50]}... (model: {model_name}, ratio: {ratio}, n: {num_images})")
-        logger.info(f"Final prompt: {final_prompt[:200]}")
-
-        config_kwargs = {
-            "number_of_images": num_images,
-            "aspect_ratio": ratio,
-            "person_generation": person_generation,
-        }
-        if negative_prompt:
-            config_kwargs["negative_prompt"] = negative_prompt
-
-        try:
-            time.sleep(4)  # rate limit
-            response = self.client.models.generate_images(
-                model=model_name,
-                prompt=final_prompt,
-                config=GenerateImagesConfig(**config_kwargs),
-            )
-        except (APIError, ClientError) as e:
-            logger.error(f"Image API Error: {e}")
-            raise
-
-        # Save each image to outputs/ and Desktop
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        saved_files = []
-        desktop = Path.home() / "Desktop"
-
-        for i, generated in enumerate(response.generated_images, start=1):
-            suffix = f"_{i}" if num_images > 1 else ""
-            filename = f"image_{timestamp}{suffix}.png"
-            outputs_path = self.output_dir / filename
-            desktop_path = desktop / filename
-
-            image_bytes = generated.image.image_bytes
-            with open(outputs_path, "wb") as f:
-                f.write(image_bytes)
-            with open(desktop_path, "wb") as f:
-                f.write(image_bytes)
-
-            saved_files.append(filename)
-            logger.info(f"Image saved to {outputs_path} and {desktop_path}")
-
-        files_listing = "\n".join(
-            f"  • outputs/{name}\n  • Desktop/{name}" for name in saved_files
-        )
-        return (
-            f"🖼️  Generated {len(saved_files)} image(s)\n"
-            f"Prompt used: {final_prompt}\n"
-            f"Aspect ratio: {ratio}  |  Model: {model_name}\n\n"
-            f"💾 Saved to:\n{files_listing}"
-        )
-
-    def _parse_and_format_response(self, response_text, task_type, query_summary):
+def _parse_and_format_response(self, response_text, task_type, query_summary):
         """Parse JSON response, always save to outputs/ and Desktop, return text in chat."""
         try:
             data = json.loads(response_text)
@@ -515,66 +345,34 @@ Return the response as valid JSON with keys: code (string - full Python code), e
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Delegate research, coding, and image tasks to Gemini API"
+        description="Delegate research and coding tasks to Gemini API"
     )
-    parser.add_argument("--type", choices=["research", "code", "image"], required=True,
+    parser.add_argument("--type", choices=["research", "code"], required=True,
                         help="Task type")
     parser.add_argument("--query", type=str,
                         help="Research query (for --type research)")
     parser.add_argument("--request", type=str,
                         help="Code request (for --type code)")
-    parser.add_argument("--prompt", type=str,
-                        help="Image description (for --type image)")
     parser.add_argument("--level", choices=["basic", "intermediate", "advanced", "expert"],
                         default="intermediate",
-                        help="Reasoning/complexity level (research/code only)")
+                        help="Reasoning/complexity level")
     parser.add_argument("--model", type=str, default=None,
                         choices=list(MODEL_REGISTRY.keys()),
                         metavar="MODEL",
                         help=(
                             "Model alias. Choices: "
                             + ", ".join(MODEL_REGISTRY.keys())
-                            + "  (research/code default: gemini25pro; image default: imagen4)"
                         ))
     parser.add_argument("--force", action="store_true",
                         help="Bypass the paid-tier pre-flight check and attempt the call anyway.")
 
-    # ── Image-specific options ────────────────────────────────────────────────
-    img = parser.add_argument_group("image options (use with --type image)")
-    img.add_argument("--style", type=str, default=None,
-                     help=(
-                         "Style preset(s), comma-separated. Custom strings allowed. "
-                         "Presets: " + ", ".join(STYLE_PRESETS.keys())
-                     ))
-    img.add_argument("--aspect", type=str, default="1:1",
-                     metavar="RATIO",
-                     help=(
-                         "Aspect ratio. Aliases: square, portrait, landscape, wide, tall. "
-                         "Or pass directly: 1:1, 3:4, 4:3, 16:9, 9:16"
-                     ))
-    img.add_argument("--num", type=int, default=1, choices=[1, 2, 3, 4],
-                     help="Number of images to generate (1-4)")
-    img.add_argument("--lighting", type=str, default=None,
-                     help="Lighting modifier (e.g. 'golden hour', 'studio', 'neon', 'soft')")
-    img.add_argument("--mood", type=str, default=None,
-                     help="Mood modifier (e.g. 'moody', 'cheerful', 'dramatic', 'serene')")
-    img.add_argument("--quality", type=str, default=None,
-                     help="Quality modifier (e.g. '8k', 'hyperdetailed', 'masterpiece')")
-    img.add_argument("--negative", type=str, default=None,
-                     help="Negative prompt (what to AVOID in the image)")
-    img.add_argument("--extra", type=str, default=None,
-                     help="Any extra freeform modifiers appended to the prompt")
-    img.add_argument("--people", type=str, default="ALLOW_ADULT",
-                     choices=["DONT_ALLOW", "ALLOW_ADULT", "ALLOW_ALL"],
-                     help="Person generation policy (default: ALLOW_ADULT)")
-
     args = parser.parse_args()
 
-    # Warn if a non-text/image model is passed to a text/image task
+    # Warn if a non-text model is passed to a text task
     if args.model:
         entry = MODEL_REGISTRY.get(args.model, {})
         model_type = entry.get("type", "text")
-        if model_type in ("video", "tts", "audio") and args.type in ("research", "code", "image"):
+        if model_type != "text":
             print(
                 f"Note: '{args.model}' is a {model_type} model. "
                 f"Full --type {model_type} support is not yet implemented — "
@@ -589,26 +387,10 @@ def main():
             if not args.query:
                 parser.error("--query required for research tasks")
             result = delegator.delegate_research(args.query, args.level, args.model)
-        elif args.type == "code":
+        else:  # code
             if not args.request:
                 parser.error("--request required for code tasks")
             result = delegator.delegate_code(args.request, args.level, args.model)
-        else:  # image
-            if not args.prompt:
-                parser.error("--prompt required for image tasks")
-            result = delegator.delegate_image(
-                prompt=args.prompt,
-                model=args.model,
-                style=args.style,
-                aspect_ratio=args.aspect,
-                num_images=args.num,
-                lighting=args.lighting,
-                mood=args.mood,
-                quality=args.quality,
-                negative_prompt=args.negative,
-                person_generation=args.people,
-                extra=args.extra,
-            )
 
         print(result)
 
