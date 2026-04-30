@@ -4,6 +4,7 @@ Gemini Delegator — AI-to-AI delegation for research and coding tasks.
 Routes requests to Gemini API with reasoning control and JSON response format.
 """
 
+import re
 import sys
 import os
 import json
@@ -40,52 +41,54 @@ logger = logging.getLogger(__name__)
 # "aqa"       → generate_answer   (grounded Q&A with citations)
 MODEL_REGISTRY = {
     # ── Gemini 2.5 ────────────────────────────────────────────────────────────
-    "gemini25pro":        {"id": "gemini-2.5-pro",                              "type": "text",      "desc": "Best overall. Deep reasoning + thinking tokens. Ideal for hard research, complex code, long documents."},
-    "gemini25flash":      {"id": "gemini-2.5-flash",                            "type": "text",      "desc": "Fast and smart. Best all-rounder — most tasks at a fraction of Pro's latency."},
-    "pro":                {"id": "gemini-2.5-pro",                              "type": "text",      "desc": "Alias for gemini25pro. Best overall reasoning."},
-    "flash":              {"id": "gemini-2.5-flash",                            "type": "text",      "desc": "Alias for gemini25flash. Fast and capable."},
-    "gemini25flashimage": {"id": "gemini-2.5-flash-image",                      "type": "text",      "desc": "2.5 Flash that can generate images inline within a text response."},
-    "gemini25computeruse":{"id": "gemini-2.5-computer-use-preview-10-2025",     "type": "text",      "desc": "Trained to understand screenshots and plan GUI/desktop interactions."},
+    # tier: confirmed via live testing. "free" = works on free API key. "paid" = limit:0 on free tier.
+    "gemini25pro":        {"id": "gemini-2.5-pro",                              "type": "text",  "tier": "paid",    "desc": "Best overall. Deep reasoning + thinking tokens. Ideal for hard research, complex code, long documents.",           "best_for": "Hardest research tasks, expert-level code, massive documents. Best reasoning available — requires paid plan."},
+    "gemini25flash":      {"id": "gemini-2.5-flash",                            "type": "text",  "tier": "free",    "desc": "Fast and smart. Best all-rounder — most tasks at a fraction of Pro's latency.",                                   "best_for": "Everyday research, code generation, Q&A, summaries. Best default choice for most tasks on free tier."},
+    "pro":                {"id": "gemini-2.5-pro",                              "type": "text",  "tier": "paid",    "desc": "Alias for gemini25pro. Best overall reasoning.",                                                                  "best_for": "Same as gemini25pro. Use that alias instead — requires paid plan."},
+    "flash":              {"id": "gemini-2.5-flash",                            "type": "text",  "tier": "unknown", "desc": "Alias for gemini25flash. Fast and capable.",                                                                      "best_for": "Same as gemini25flash. Use that alias instead."},
+    "gemini25flashimage": {"id": "gemini-2.5-flash-image",                      "type": "text",  "tier": "paid",    "desc": "2.5 Flash that can generate images inline within a text response.",                                              "best_for": "Text responses that include generated images inline — requires paid plan."},
+    "gemini25computeruse":{"id": "gemini-2.5-computer-use-preview-10-2025",     "type": "text",  "tier": "paid",    "desc": "Trained to understand screenshots and plan GUI/desktop interactions.",                                            "best_for": "Describing what to click or type in a UI from a screenshot — requires paid plan."},
     # ── Gemini 2.0 ────────────────────────────────────────────────────────────
-    "gemini20flash":      {"id": "gemini-2.0-flash",                            "type": "text",      "desc": "Previous-gen speed model. Reliable, fast, and well-tested for general tasks."},
-    "gemini20lite":       {"id": "gemini-2.0-flash-lite",                       "type": "text",      "desc": "Fastest and cheapest Gemini model. Best for high-volume simple tasks."},
+    "gemini20flash":      {"id": "gemini-2.0-flash",                            "type": "text",  "tier": "paid",    "desc": "Previous-gen speed model. Reliable, fast, and well-tested for general tasks.",                                    "best_for": "High-volume reliable tasks where 2.5 Flash isn't available — requires paid plan."},
+    "gemini20lite":       {"id": "gemini-2.0-flash-lite",                       "type": "text",  "tier": "paid",    "desc": "Fastest and cheapest Gemini model. Best for high-volume simple tasks.",                                          "best_for": "Ultra-cheap simple completions at scale — requires paid plan."},
     # ── Gemini 3.x ────────────────────────────────────────────────────────────
-    "gemini3pro":         {"id": "gemini-3-pro-preview",                        "type": "text",      "desc": "Next-gen flagship (preview). Stronger reasoning than 2.5 Pro."},
-    "gemini3flash":       {"id": "gemini-3-flash-preview",                      "type": "text",      "desc": "Next-gen fast model (preview). Better quality than 2.5 Flash."},
-    "gemini3proimage":    {"id": "gemini-3-pro-image-preview",                  "type": "text",      "desc": "Gemini 3 Pro with native image generation baked into text responses."},
+    "gemini3pro":         {"id": "gemini-3-pro-preview",                        "type": "text",  "tier": "unknown", "desc": "Next-gen flagship (preview). Stronger reasoning than 2.5 Pro.",                                                  "best_for": "Most complex reasoning available in the 3.x line — not confirmed on free tier."},
+    "gemini3flash":       {"id": "gemini-3-flash-preview",                      "type": "text",  "tier": "free",    "desc": "Next-gen fast model (preview). Better quality than 2.5 Flash.",                                                  "best_for": "When you want newer-generation responses than gemini25flash. Slightly more current behavior."},
+    "gemini3proimage":    {"id": "gemini-3-pro-image-preview",                  "type": "text",  "tier": "paid",    "desc": "Gemini 3 Pro with native image generation baked into text responses.",                                           "best_for": "Text + inline images in one response — requires paid plan."},
     # ── Gemini 3.1 ────────────────────────────────────────────────────────────
-    "gemini31pro":        {"id": "gemini-3.1-pro-preview",                      "type": "text",      "desc": "Latest flagship (preview). Best available reasoning across all models."},
-    "gemini31lite":       {"id": "gemini-3.1-flash-lite-preview",               "type": "text",      "desc": "Ultra-fast and cheap 3.1 model. Great for lightweight tasks that need speed."},
-    "gemini31flashimage": {"id": "gemini-3.1-flash-image-preview",              "type": "text",      "desc": "3.1 Flash with native inline image generation capability."},
-    "gemini31live":       {"id": "gemini-3.1-flash-live-preview",               "type": "text",      "desc": "Optimized for real-time streaming and live conversation sessions."},
-    "gemini31customtools":{"id": "gemini-3.1-pro-preview-customtools",          "type": "text",      "desc": "3.1 Pro with extended custom tool-calling support for agentic workflows."},
+    "gemini31pro":        {"id": "gemini-3.1-pro-preview",                      "type": "text",  "tier": "unknown", "desc": "Latest flagship (preview). Best available reasoning across all models.",                                          "best_for": "Cutting-edge reasoning tasks — not confirmed on free tier."},
+    "gemini31lite":       {"id": "gemini-3.1-flash-lite-preview",               "type": "text",  "tier": "unavailable", "desc": "Ultra-fast and cheap 3.1 model. Currently unavailable (503 error).",                                                "best_for": "[unavailable] Simple lookups that need speed."},
+    "gemini31flashimage": {"id": "gemini-3.1-flash-image-preview",              "type": "text",  "tier": "paid",    "desc": "3.1 Flash with native inline image generation capability.",                                                       "best_for": "Inline image generation in text responses — requires paid plan."},
+    "gemini31live":       {"id": "gemini-3.1-flash-live-preview",               "type": "text",  "tier": "unavailable", "desc": "Optimized for real-time streaming and live conversation sessions.",                                               "best_for": "[unavailable] Real-time streaming chat — not available on free tier (404 error)."},
+    "gemini31customtools":{"id": "gemini-3.1-pro-preview-customtools",          "type": "text",  "tier": "unknown", "desc": "3.1 Pro with extended custom tool-calling support for agentic workflows.",                                        "best_for": "Agentic pipelines with custom tool definitions — not confirmed on free tier."},
     # ── Deep Research ─────────────────────────────────────────────────────────
-    "deepresearch":       {"id": "deep-research-preview-04-2026",               "type": "text",      "desc": "Autonomously browses the web and synthesizes multi-step research reports."},
-    "deepresearchpro":    {"id": "deep-research-pro-preview-12-2025",           "type": "text",      "desc": "Deep Research at pro-tier thoroughness. More sources, deeper analysis."},
-    "deepresearchmax":    {"id": "deep-research-max-preview-04-2026",           "type": "text",      "desc": "Maximum-effort web research. Most thorough available, slowest."},
+    "deepresearch":       {"id": "deep-research-preview-04-2026",               "type": "text",  "tier": "paid",    "desc": "Autonomously browses the web and synthesizes multi-step research reports.",                                        "best_for": "Multi-source web research reports with citations — requires paid plan."},
+    "deepresearchpro":    {"id": "deep-research-pro-preview-12-2025",           "type": "text",  "tier": "paid",    "desc": "Deep Research at pro-tier thoroughness. More sources, deeper analysis.",                                           "best_for": "Exhaustive research with more sources and deeper cross-referencing — requires paid plan."},
+    "deepresearchmax":    {"id": "deep-research-max-preview-04-2026",           "type": "text",  "tier": "paid",    "desc": "Maximum-effort web research. Most thorough available, slowest.",                                                   "best_for": "Maximum-depth research tasks where time doesn't matter — requires paid plan."},
     # ── Stable "latest" aliases ───────────────────────────────────────────────
-    "flashlatest":        {"id": "gemini-flash-latest",                         "type": "text",      "desc": "Always points to Google's current production Flash release. Never deprecated."},
-    "flashlitelatest":    {"id": "gemini-flash-lite-latest",                    "type": "text",      "desc": "Always points to the current production Flash Lite release."},
-    "prolatest":          {"id": "gemini-pro-latest",                           "type": "text",      "desc": "Always points to the current production Pro release."},
-    # ── Gemma 3 (open-weight) ─────────────────────────────────────────────────
-    "gemma31b":           {"id": "gemma-3-1b-it",                               "type": "text",      "desc": "1B open-weight. Ultra-light; designed for on-device or offline use."},
-    "gemma34b":           {"id": "gemma-3-4b-it",                               "type": "text",      "desc": "4B open-weight. Small but capable for general everyday tasks."},
-    "gemma312b":          {"id": "gemma-3-12b-it",                              "type": "text",      "desc": "12B open-weight. Good balance of quality and speed."},
-    "gemma327b":          {"id": "gemma-3-27b-it",                              "type": "text",      "desc": "27B open-weight. Best quality in Gemma 3 — near frontier model performance."},
-    "gemma3ne2b":         {"id": "gemma-3n-e2b-it",                             "type": "text",      "desc": "2B multimodal nano model. Handles audio, image, and text in a tiny footprint."},
-    "gemma3ne4b":         {"id": "gemma-3n-e4b-it",                             "type": "text",      "desc": "4B multimodal nano. Same as 3ne2b but larger and more capable."},
-    # ── Gemma 4 ───────────────────────────────────────────────────────────────
-    "gemma4":             {"id": "gemma-4-26b-a4b-it",                          "type": "text",      "desc": "26B mixture-of-experts; only 4B active at once. Fast, efficient, punches above weight."},
-    "gemma431b":          {"id": "gemma-4-31b-it",                              "type": "text",      "desc": "31B dense open-weight model. Highest quality in the Gemma 4 line."},
-    # ── Gemini Robotics ───────────────────────────────────────────────────────
-    "robotics15":         {"id": "gemini-robotics-er-1.5-preview",              "type": "text",      "desc": "Embodied reasoning for robotics and physical agent planning."},
-    "robotics16":         {"id": "gemini-robotics-er-1.6-preview",              "type": "text",      "desc": "Robotics v1.6 — improved 3D spatial and physical understanding."},
+    "flashlatest":        {"id": "gemini-flash-latest",                         "type": "text",  "tier": "free",    "desc": "Always points to Google's current production Flash release. Never deprecated.",                                    "best_for": "Scripts and automations that need to keep working across Google releases without manual updates."},
+    "flashlitelatest":    {"id": "gemini-flash-lite-latest",                    "type": "text",  "tier": "free",    "desc": "Always points to the current production Flash Lite release.",                                                     "best_for": "Lightweight automations that should auto-track the latest lite release indefinitely."},
+    "prolatest":          {"id": "gemini-pro-latest",                           "type": "text",  "tier": "unknown", "desc": "Always points to the current production Pro release.",                                                            "best_for": "Pro-quality tasks via a stable alias — not confirmed on free tier."},
+    # ── Gemma 3 (open-weight, confirmed free) ────────────────────────────────
+    # NOTE: Gemma 3.x models do NOT support system_instruction OR response_mime_type=application/json
+    "gemma31b":           {"id": "gemma-3-1b-it",                               "type": "text",  "tier": "free",    "no_system_instruction": True, "no_json_mime": True, "desc": "1B open-weight. Ultra-light; designed for on-device or offline use.",                                            "best_for": "Speed-critical tasks where quality matters less. Instant responses, minimal compute."},
+    "gemma34b":           {"id": "gemma-3-4b-it",                               "type": "text",  "tier": "free",    "no_system_instruction": True, "no_json_mime": True, "desc": "4B open-weight. Small but capable for general everyday tasks.",                                                  "best_for": "Simple everyday queries — summaries, basic Q&A, short code snippets."},
+    "gemma312b":          {"id": "gemma-3-12b-it",                              "type": "text",  "tier": "free",    "no_system_instruction": True, "no_json_mime": True, "desc": "12B open-weight. Good balance of quality and speed.",                                                            "best_for": "General research and code where you want open-weight quality without the heaviest models."},
+    "gemma327b":          {"id": "gemma-3-27b-it",                              "type": "text",  "tier": "free",    "no_system_instruction": True, "no_json_mime": True, "desc": "27B open-weight. Best quality in Gemma 3 — near frontier model performance.",                                    "best_for": "Complex reasoning, detailed writing, hard code — highest free-tier quality in the Gemma 3 line."},
+    "gemma3ne2b":         {"id": "gemma-3n-e2b-it",                             "type": "text",  "tier": "free",    "no_system_instruction": True, "no_json_mime": True, "desc": "2B multimodal nano model. Handles audio, image, and text in a tiny footprint.",                                   "best_for": "Mixed-input tasks (text + images or audio) where you need a tiny, efficient model."},
+    "gemma3ne4b":         {"id": "gemma-3n-e4b-it",                             "type": "text",  "tier": "free",    "no_system_instruction": True, "no_json_mime": True, "desc": "4B multimodal nano. Same as 3ne2b but larger and more capable.",                                                "best_for": "Multimodal tasks needing slightly more capability than gemma3ne2b."},
+    # ── Gemma 4 (open-weight, confirmed free) ────────────────────────────────
+    "gemma4":             {"id": "gemma-4-26b-a4b-it",                          "type": "text",  "tier": "free",    "desc": "26B mixture-of-experts; only 4B active at once. Fast, efficient, punches above weight.",                          "best_for": "Demanding tasks needing near-Pro quality with low compute cost. Best efficiency on free tier."},
+    "gemma431b":          {"id": "gemma-4-31b-it",                              "type": "text",  "tier": "free",    "desc": "31B dense open-weight model. Highest quality in the Gemma 4 line.",                                             "best_for": "Highest-quality outputs available on free tier. Use for long, complex, or detailed tasks."},
+    # ── Gemini Robotics (confirmed free) ─────────────────────────────────────
+    "robotics15":         {"id": "gemini-robotics-er-1.5-preview",              "type": "text",  "tier": "unavailable", "desc": "Embodied reasoning for robotics and physical agent planning.",                                                    "best_for": "[unavailable] Spatial reasoning, robotics planning — not found (404 error)."},
+    "robotics16":         {"id": "gemini-robotics-er-1.6-preview",              "type": "text",  "tier": "free",    "desc": "Robotics v1.6 — improved 3D spatial and physical understanding.",                                               "best_for": "Spatial reasoning, robotics planning, 3D scene understanding, physical world questions."},
     # ── Experimental ──────────────────────────────────────────────────────────
-    "nanobanana":         {"id": "nano-banana-pro-preview",                     "type": "text",      "desc": "Google internal experimental model. Behavior not fully documented."},
-    # ── Image generation (Imagen) ─────────────────────────────────────────────
-    "imagen4":            {"id": "imagen-4.0-generate-001",                     "type": "image",     "desc": "Imagen 4 standard. Photorealistic, high detail. Best default choice."},
-    "imagen4fast":        {"id": "imagen-4.0-fast-generate-001",                "type": "image",     "desc": "Imagen 4 Fast. Same quality target as standard, noticeably quicker."},
-    "imagen4ultra":       {"id": "imagen-4.0-ultra-generate-001",               "type": "image",     "desc": "Imagen 4 Ultra. Highest possible image quality. Slower and may cost more."},
+    "nanobanana":         {"id": "nano-banana-pro-preview",                     "type": "text",  "tier": "paid",    "desc": "Google internal experimental model. Behavior not fully documented.",                                             "best_for": "Curiosity only — undocumented experimental model, requires paid plan."},
+    # ── Image generation (Imagen) — confirmed paid-only ───────────────────────
+    "imagen4":            {"id": "imagen-4.0-generate-001",                     "type": "image", "tier": "paid",    "desc": "Imagen 4 standard. Photorealistic, high detail. Best default choice.",                                           "best_for": "Photorealistic AI image generation from text prompts — requires paid plan."},
+    "imagen4fast":        {"id": "imagen-4.0-fast-generate-001",                "type": "image", "tier": "paid",    "desc": "Imagen 4 Fast. Same quality target as standard, noticeably quicker.",                                           "best_for": "Same as imagen4 but faster — use when you need many images quickly. Requires paid plan."},
+    "imagen4ultra":       {"id": "imagen-4.0-ultra-generate-001",               "type": "image", "tier": "paid",    "desc": "Imagen 4 Ultra. Highest possible image quality. Slower and may cost more.",                                      "best_for": "Maximum image quality — hero shots, print-quality output. Requires paid plan."},
     # ── Video generation (Veo) — registered; full --type video impl TBD ───────
     "veo2":               {"id": "veo-2.0-generate-001",                        "type": "video",     "desc": "Veo 2. Generates cinematic HD video clips from a text description."},
     "veo3":               {"id": "veo-3.0-generate-001",                        "type": "video",     "desc": "Veo 3. Video + synchronized native audio (ambient sound, speech, music)."},
@@ -202,8 +205,12 @@ SYSTEM_INSTRUCTION = (
 )
 
 
+class PaidTierRequired(Exception):
+    """Raised when a paid-tier model is selected but --force was not passed."""
+
+
 class GeminiDelegator:
-    def __init__(self, config_path="gemini_delegator_config.yaml"):
+    def __init__(self, config_path="gemini_delegator_config.yaml", force=False):
         """Initialize delegator with config and API key."""
         self.config_path = Path(__file__).parent / config_path
         self.config = self._load_config()
@@ -211,6 +218,21 @@ class GeminiDelegator:
         self.client = self._init_client()
         self.output_dir = Path(__file__).parent / self.config["paths"]["outputs"]
         self.output_dir.mkdir(exist_ok=True)
+        self.force = force
+
+    def _check_tier(self, entry):
+        """Refuse unavailable and paid-tier models unless --force was passed."""
+        tier = entry.get("tier")
+        if tier == "unavailable":
+            raise ValueError(
+                f"Model '{entry['id']}' is not available. "
+                f"(It may have been withdrawn or is temporarily down.)"
+            )
+        if tier == "paid" and not self.force:
+            raise PaidTierRequired(
+                f"Model '{entry['id']}' is paid-tier on this API key "
+                f"(registry tier='paid'). Pass --force to attempt anyway."
+            )
 
     def _load_config(self):
         """Load YAML configuration."""
@@ -265,27 +287,35 @@ Return the response as valid JSON with keys: findings (list), sources (list), su
 
 Return the response as valid JSON with keys: code (string - full Python code), explanation (string), notes (string)."""
 
-    def _call_gemini_with_retry(self, prompt, model, thinking_budget, max_retries=3):
+    def _call_gemini_with_retry(self, prompt, model, thinking_budget, skip_system_instruction=False, skip_json_mime=False, max_retries=1):
         """Call Gemini API with rate limiting and error handling."""
         # Models confirmed to support thinking/reasoning tokens
-        THINKING_CAPABLE = {"gemini-2.5-pro", "gemini-2.5-flash"}
+        THINKING_CAPABLE = {"gemini-2.5-flash", "gemini-3-flash-preview", "gemini-flash-latest"}
         supports_thinking = model in THINKING_CAPABLE
 
-        call_config = GenerateContentConfig(
-            system_instruction=SYSTEM_INSTRUCTION,
-            response_mime_type="application/json"
-        )
+        # Build config conditionally based on model capabilities
+        config_kwargs = {}
+        if not skip_json_mime:
+            config_kwargs["response_mime_type"] = "application/json"
+        if not skip_system_instruction:
+            config_kwargs["system_instruction"] = SYSTEM_INSTRUCTION
+
+        call_config = GenerateContentConfig(**config_kwargs)
+
         if supports_thinking and thinking_budget > 0:
             call_config.thinking_config = ThinkingConfig(
                 thinking_budget=thinking_budget
             )
 
-        for attempt in range(max_retries):
+        # max_retries=1 means: one initial attempt + one retry on transient 429.
+        # Hard-quota (limit: 0) failures fail-fast without retrying.
+        attempts = max_retries + 1
+        for attempt in range(attempts):
             try:
                 # Rate limiting: 4 seconds between requests (15 RPM = ~4 sec/request)
                 time.sleep(4)
 
-                model_name = model  # Variable controlling which Gemini model is called
+                model_name = model
 
                 response = self.client.models.generate_content(
                     model=model_name,
@@ -297,40 +327,56 @@ Return the response as valid JSON with keys: code (string - full Python code), e
                 return response.text
 
             except (APIError, ClientError) as e:
-                if "429" in str(e) or "Resource Exhausted" in str(e):
-                    wait_time = 60
-                    logger.warning(f"Rate limit hit (429). Waiting {wait_time}s... (Attempt {attempt+1}/{max_retries})")
-                    print(f"Rate limit reached. Waiting {wait_time}s before retry...", file=sys.stderr)
-                    time.sleep(wait_time)
-                    if attempt == max_retries - 1:
-                        logger.error(f"Failed after {max_retries} retries: {e}")
-                        raise
-                else:
+                err_str = str(e)
+                is_429 = "429" in err_str or "Resource Exhausted" in err_str or "RESOURCE_EXHAUSTED" in err_str
+                if not is_429:
                     logger.error(f"API Error: {e}")
                     raise
+
+                # Hard-quota detection: free tier with limit:0 won't recover via retry.
+                if "limit: 0" in err_str or "limit:0" in err_str:
+                    logger.error(f"Hard quota (limit: 0) on {model} — paid tier required. Failing fast.")
+                    raise
+
+                if attempt >= attempts - 1:
+                    logger.error(f"Failed after {attempts} attempts: {e}")
+                    raise
+
+                # Honor server-provided retryDelay if present (e.g. 'retryDelay': '49s').
+                m = re.search(r"retryDelay['\"]?\s*:\s*['\"](\d+)s", err_str)
+                wait_time = int(m.group(1)) + 1 if m else 30
+                logger.warning(f"Rate limit hit (429). Waiting {wait_time}s... (Attempt {attempt+1}/{attempts})")
+                print(f"Rate limit reached. Waiting {wait_time}s before retry...", file=sys.stderr)
+                time.sleep(wait_time)
 
     def delegate_research(self, query, level="intermediate", model=None):
         """Delegate research task to Gemini."""
         entry = resolve_model(model or DEFAULT_MODEL_ALIAS)
+        self._check_tier(entry)
         model_name = entry["id"]
         thinking_budget = self._get_reasoning_budget("research", level)
+        skip_sys = entry.get("no_system_instruction", False)
+        skip_json = entry.get("no_json_mime", False)
 
         logger.info(f"Research task: {query[:50]}... (level: {level}, model: {model_name})")
         prompt = self._build_research_prompt(query, level)
 
-        response_text = self._call_gemini_with_retry(prompt, model_name, thinking_budget)
+        response_text = self._call_gemini_with_retry(prompt, model_name, thinking_budget, skip_system_instruction=skip_sys, skip_json_mime=skip_json)
         return self._parse_and_format_response(response_text, "research", query)
 
     def delegate_code(self, request, level="intermediate", model=None):
         """Delegate code generation task to Gemini."""
         entry = resolve_model(model or DEFAULT_MODEL_ALIAS)
+        self._check_tier(entry)
         model_name = entry["id"]
         thinking_budget = self._get_reasoning_budget("code", level)
+        skip_sys = entry.get("no_system_instruction", False)
+        skip_json = entry.get("no_json_mime", False)
 
         logger.info(f"Code task: {request[:50]}... (level: {level}, model: {model_name})")
         prompt = self._build_code_prompt(request, level)
 
-        response_text = self._call_gemini_with_retry(prompt, model_name, thinking_budget)
+        response_text = self._call_gemini_with_retry(prompt, model_name, thinking_budget, skip_system_instruction=skip_sys, skip_json_mime=skip_json)
         return self._parse_and_format_response(response_text, "code", request)
 
     def _build_image_prompt(self, prompt, style=None, lighting=None, mood=None,
@@ -363,6 +409,7 @@ Return the response as valid JSON with keys: code (string - full Python code), e
                        extra=None):
         """Delegate image generation to Imagen via Gemini API."""
         entry = resolve_model(model or "imagen4")
+        self._check_tier(entry)
         model_name = entry["id"]
 
         if entry["type"] != "image":
@@ -489,6 +536,8 @@ def main():
                             + ", ".join(MODEL_REGISTRY.keys())
                             + "  (research/code default: gemini25pro; image default: imagen4)"
                         ))
+    parser.add_argument("--force", action="store_true",
+                        help="Bypass the paid-tier pre-flight check and attempt the call anyway.")
 
     # ── Image-specific options ────────────────────────────────────────────────
     img = parser.add_argument_group("image options (use with --type image)")
@@ -533,7 +582,7 @@ def main():
                 file=sys.stderr
             )
 
-    delegator = GeminiDelegator()
+    delegator = GeminiDelegator(force=args.force)
 
     try:
         if args.type == "research":
