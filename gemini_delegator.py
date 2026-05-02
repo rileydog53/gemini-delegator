@@ -305,7 +305,7 @@ Return the response as valid JSON with keys: code (string - full Python code), e
         response_text = self._call_gemini_with_retry(prompt, model_name, thinking_budget, skip_system_instruction=skip_sys, skip_json_mime=skip_json)
         return self._parse_and_format_response(response_text, "code", request)
 
-def _parse_and_format_response(self, response_text, task_type, query_summary):
+    def _parse_and_format_response(self, response_text, task_type, query_summary):
         """Parse JSON response, always save to outputs/ and Desktop, return text in chat."""
         try:
             data = json.loads(response_text)
@@ -322,12 +322,14 @@ def _parse_and_format_response(self, response_text, task_type, query_summary):
         with open(outputs_path, "w") as f:
             json.dump(data, f, indent=2)
 
-        # Always save a copy to Desktop
-        desktop_path = Path.home() / "Desktop" / filename
-        with open(desktop_path, "w") as f:
+        # Always save a copy to scratch
+        scratch_dir = Path.home() / "Desktop" / "scratch"
+        scratch_dir.mkdir(exist_ok=True)
+        scratch_path = scratch_dir / filename
+        with open(scratch_path, "w") as f:
             json.dump(data, f, indent=2)
 
-        logger.info(f"Output saved to {outputs_path} and {desktop_path}")
+        logger.info(f"Output saved to {outputs_path} and {scratch_path}")
 
         CHAT_LIMIT = 2000
         if len(formatted) <= CHAT_LIMIT:

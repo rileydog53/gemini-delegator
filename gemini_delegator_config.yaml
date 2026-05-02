@@ -10,14 +10,14 @@ reasoning_budgets:
   research:
     basic: 1000
     intermediate: 10000
-    advanced: 30000
-    expert: 50000
+    advanced: 24000
+    expert: 24576
 
   code:
     basic: 2000
     intermediate: 8000
-    advanced: 25000
-    expert: 50000
+    advanced: 20000
+    expert: 24576
 
 output_formats:
   research: markdown
